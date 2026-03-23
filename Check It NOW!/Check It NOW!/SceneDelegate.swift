@@ -6,6 +6,8 @@
 //
 
 import UIKit
+import SnapKit
+import Then
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
@@ -13,43 +15,66 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-        // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-        // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
-        guard let _ = (scene as? UIWindowScene) else { return }
-    }
+        guard let windowScene = (scene as? UIWindowScene) else { return }
 
+            // 1. 새로운 윈도우 생성
+        let window = UIWindow(windowScene: windowScene)
+
+            // 탭 바 컨트롤러를 루트로 설정.
+        window.rootViewController = createTabBarController()
+        window.makeKeyAndVisible()
+        self.window = window
+    }
+        // 탭 바와 각 화면의 연결을 담당하는 메서드
+    private func createTabBarController() -> UITabBarController {
+
+            // 1. 각 탭에 들어갈 뷰 컨트롤러 생성 (나중에 실제 클래스명으로 교체하세요)
+        let worldClockVC = UINavigationController(rootViewController: WorldClockViewController()).then {
+            $0.tabBarItem = UITabBarItem(title: "세계 시계", image: UIImage(systemName: "globe"), tag: 0)
+        }
+
+        let alarmVC = UINavigationController(rootViewController: AlarmViewController()).then {
+            $0.tabBarItem = UITabBarItem(title: "알람", image: UIImage(systemName: "alarm.fill"), tag: 1)
+            $0.navigationBar.prefersLargeTitles = true // 시계 앱 특유의 큰 타이틀 적용
+        }
+
+        let stopwatchVC = UINavigationController(rootViewController: StopWatchViewController()).then {
+            $0.tabBarItem = UITabBarItem(title: "스톱워치", image: UIImage(systemName: "stopwatch.fill"), tag: 2)
+        }
+
+        let timerVC = UINavigationController(rootViewController: TimerViewController()).then {
+            $0.tabBarItem = UITabBarItem(title: "타이머", image: UIImage(systemName: "timer"), tag: 3)
+        }
+
+            // 2. 탭 바 컨트롤러 구성
+        return UITabBarController().then {
+            $0.viewControllers = [worldClockVC, alarmVC, stopwatchVC, timerVC]
+            $0.selectedIndex = 1 // 앱 실행 시 '알람' 탭을 기본으로 보여줌
+            $0.tabBar.tintColor = .systemOrange // 아이폰 시계 앱 시그니처 컬러
+            $0.tabBar.backgroundColor = .systemBackground
+        }
+    }
+}
     func sceneDidDisconnect(_ scene: UIScene) {
-        // Called as the scene is being released by the system.
-        // This occurs shortly after the scene enters the background, or when its session is discarded.
-        // Release any resources associated with this scene that can be re-created the next time the scene connects.
-        // The scene may re-connect later, as its session was not necessarily discarded (see `application:didDiscardSceneSessions` instead).
+        // 시스템이 씬과 연결을 끊을 때 호출됩니다. 앱이 백그라운드로 들어간 직후나 세션이 삭제될 때 발생하며, 다음에 다시 연결될 때 새로 만들 수 있는 자원들을 여기서 해제합니다.
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
-        // Called when the scene has moved from an inactive state to an active state.
-        // Use this method to restart any tasks that were paused (or not yet started) when the scene was inactive.
+        // 씬이 비활성 상태에서 활성 상태로 전환되었을 때 호출됩니다. 앱이 멈춰있을 때 중단되었던 작업이나 아직 시작되지 않은 작업들을 다시 실행하는 용도로 사용합니다.
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
-        // Called when the scene will move from an active state to an inactive state.
-        // This may occur due to temporary interruptions (ex. an incoming phone call).
+        // 씬이 활성 상태에서 비활성 상태로 전환되기 직전에 호출됩니다. 전화가 오거나 알림창이 내려오는 등의 일시적인 방해 상황에서 주로 발생합니다.
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {
-        // Called as the scene transitions from the background to the foreground.
-        // Use this method to undo the changes made on entering the background.
+        // 씬이 백그라운드에서 포그라운드(화면)로 올라올 때 호출됩니다. 백그라운드에 들어갈 때 변경했던 설정들을 다시 원래대로 되돌리는 코드를 작성합니다.
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
-        // Called as the scene transitions from the foreground to the background.
-        // Use this method to save data, release shared resources, and store enough scene-specific state information
-        // to restore the scene back to its current state.
-
-        // Save changes in the application's managed object context when the application transitions to the background.
+        // 씬이 포그라운드에서 백그라운드로 완전히 내려갔을 때 호출됩니다. 데이터를 저장하거나 공유 자원을 해제하고, 나중에 앱을 다시 켰을 때 현재 상태를 복구할 수 있도록 정보를 저장합니다.
         (UIApplication.shared.delegate as? AppDelegate)?.saveContext()
     }
 
 
-}
 
