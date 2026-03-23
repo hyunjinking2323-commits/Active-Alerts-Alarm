@@ -10,16 +10,16 @@ import SnapKit
 import Then
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-
+    
     var window: UIWindow?
-
-
+    
+    
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
-
+        
             // 1. 새로운 윈도우 생성
         let window = UIWindow(windowScene: windowScene)
-
+        
             // 탭 바 컨트롤러를 루트로 설정.
         window.rootViewController = createTabBarController()
         window.makeKeyAndVisible()
@@ -27,25 +27,25 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
         // 탭 바와 각 화면의 연결을 담당하는 메서드
     private func createTabBarController() -> UITabBarController {
-
+        
             // 1. 각 탭에 들어갈 뷰 컨트롤러 생성 (나중에 실제 클래스명으로 교체하세요)
         let worldClockVC = UINavigationController(rootViewController: WorldClockViewController()).then {
             $0.tabBarItem = UITabBarItem(title: "세계 시계", image: UIImage(systemName: "globe"), tag: 0)
         }
-
+        
         let alarmVC = UINavigationController(rootViewController: AlarmViewController()).then {
             $0.tabBarItem = UITabBarItem(title: "알람", image: UIImage(systemName: "alarm.fill"), tag: 1)
             $0.navigationBar.prefersLargeTitles = true // 시계 앱 특유의 큰 타이틀 적용
         }
-
+        
         let stopwatchVC = UINavigationController(rootViewController: StopWatchViewController()).then {
             $0.tabBarItem = UITabBarItem(title: "스톱워치", image: UIImage(systemName: "stopwatch.fill"), tag: 2)
         }
-
+        
         let timerVC = UINavigationController(rootViewController: TimerViewController()).then {
             $0.tabBarItem = UITabBarItem(title: "타이머", image: UIImage(systemName: "timer"), tag: 3)
         }
-
+        
             // 2. 탭 바 컨트롤러 구성
         return UITabBarController().then {
             $0.viewControllers = [worldClockVC, alarmVC, stopwatchVC, timerVC]
