@@ -13,6 +13,10 @@ import RxCocoa
 
 class AlarmViewController: BaseViewController {
 
+    let addVC = AddAlarmViewController()
+    let navController = UINavigationController(rootViewController: addVC)
+    self.present(navController, animated: true)
+
     private let alarmTableView = UITableView().then {
         $0.backgroundColor = .clear
         $0.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
@@ -29,8 +33,8 @@ class AlarmViewController: BaseViewController {
 
     override func setupConstraints() {
         addButton.snp.makeConstraints {
-            $0.top.equalTo(view.safeAreaLayoutGuide).offset(10)
-            $0.trailing.equalToSuperview().inset(20)
+            $0.top.equalTo(view.safeAreaLayoutGuide).offset(5)
+            $0.trailing.equalToSuperview().inset(10)
         }
 
         alarmTableView.snp.makeConstraints {

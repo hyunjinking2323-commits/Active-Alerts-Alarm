@@ -11,7 +11,7 @@ import Then
 import RxSwift
 import RxCocoa
 
-class WorldClockViewController: UIViewController {
+class WorldClockViewController: BaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()

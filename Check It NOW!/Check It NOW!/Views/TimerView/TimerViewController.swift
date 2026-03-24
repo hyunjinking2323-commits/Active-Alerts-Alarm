@@ -11,7 +11,7 @@ import Then
 import RxSwift
 import RxCocoa
 
-class TimerViewController: UIViewController {
+class TimerViewController: BaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
