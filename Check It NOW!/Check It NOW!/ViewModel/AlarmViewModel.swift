@@ -8,6 +8,7 @@
 import UIKit
 import UserNotifications
 import RxSwift
+import RxRelay
 import SnapKit
 import Then
 
@@ -17,7 +18,7 @@ final class AlarmViewModel {
 
     let formattor = DateFormatter().then {
         $0.dateFormat = "yyyy/MM/dd HH:mm"
-        $0.locale = Locale(identifier: "ko
+        $0.locale = Locale(identifier: "ko_KR")  // 수정됨
     }
-    }
+}
 

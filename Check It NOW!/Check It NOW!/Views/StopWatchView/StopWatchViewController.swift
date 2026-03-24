@@ -11,7 +11,8 @@ import Then
 import RxSwift
 import RxCocoa
 
-class StopWatchViewController: UIViewController {
+class StopWatchViewController: BaseViewController {
+
 
     override func viewDidLoad() {
         super.viewDidLoad()
