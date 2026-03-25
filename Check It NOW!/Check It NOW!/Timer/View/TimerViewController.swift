@@ -11,12 +11,14 @@ import Then
 import RxSwift
 import RxCocoa
 
-class TimerViewController: BaseViewController {
+final class TimerViewController: BaseViewController {
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = .systemBackground
+private let viewModel = TimerViewModel()
+
+    //private let TimerView = TimerView().then {
+
     }
 
 
-}
+
+
