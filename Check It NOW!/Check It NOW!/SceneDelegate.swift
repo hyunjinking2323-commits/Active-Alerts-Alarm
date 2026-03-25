@@ -27,30 +27,22 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
         // 탭 바와 각 화면의 연결을 담당하는 메서드
     private func createTabBarController() -> UITabBarController {
-        
-            // 1. 각 탭에 들어갈 뷰 컨트롤러 생성 (나중에 실제 클래스명으로 교체하세요)
         let worldClockVC = UINavigationController(rootViewController: WorldClockViewController()).then {
             $0.tabBarItem = UITabBarItem(title: "세계 시계", image: UIImage(systemName: "globe"), tag: 0)
         }
-        
         let alarmVC = UINavigationController(rootViewController: AlarmViewController()).then {
             $0.tabBarItem = UITabBarItem(title: "알람", image: UIImage(systemName: "alarm.fill"), tag: 1)
-            $0.navigationBar.prefersLargeTitles = true // 시계 앱 특유의 큰 타이틀 적용
         }
-        
         let stopwatchVC = UINavigationController(rootViewController: StopWatchViewController()).then {
             $0.tabBarItem = UITabBarItem(title: "스톱워치", image: UIImage(systemName: "stopwatch.fill"), tag: 2)
         }
-        
         let timerVC = UINavigationController(rootViewController: TimerViewController()).then {
             $0.tabBarItem = UITabBarItem(title: "타이머", image: UIImage(systemName: "timer"), tag: 3)
         }
-        
-            // 2. 탭 바 컨트롤러 구성
         return UITabBarController().then {
             $0.viewControllers = [worldClockVC, alarmVC, stopwatchVC, timerVC]
-            $0.selectedIndex = 1 // 앱 실행 시 '알람' 탭을 기본으로 보여줌
-            $0.tabBar.tintColor = .systemOrange // 아이폰 시계 앱 시그니처 컬러
+            $0.selectedIndex = 1
+            $0.tabBar.tintColor = .systemOrange
             $0.tabBar.backgroundColor = .systemBackground
         }
     }
