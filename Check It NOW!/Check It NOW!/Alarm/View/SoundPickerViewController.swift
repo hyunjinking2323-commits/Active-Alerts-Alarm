@@ -1,4 +1,5 @@
-// SoundPickerViewController.swift
+ 
+    // SoundPickerViewController.swift
 import UIKit
 import Then
 import SnapKit
@@ -7,8 +8,10 @@ import AVFoundation
 final class SoundPickerViewController: UIViewController {
 
     private var selected: AlarmSound
-    private let onDone: (AlarmSound) -> Void
-    private let audio = AlarmViewModel()
+    private let onDone:   (AlarmSound) -> Void
+
+        // AlarmViewModel 대신 AVAudioPlayer 직접 사용
+    private var player: AVAudioPlayer?
 
     init(selected: AlarmSound, onDone: @escaping (AlarmSound) -> Void) {
         self.selected = selected
@@ -38,39 +41,52 @@ final class SoundPickerViewController: UIViewController {
         navigationController?.navigationBar.scrollEdgeAppearance = appearance
 
         view.addSubview(tableView)
-        tableView.snp.makeConstraints {
-            $0.edges.equalToSuperview()
-        }
+        tableView.snp.makeConstraints { $0.edges.equalToSuperview() }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        audio.stopSound()
+        stopSound()
         onDone(selected)
+    }
+
+        // MARK: - Audio
+    private func playSound(_ sound: AlarmSound) {
+        stopSound()
+        guard let url = Bundle.main.url(forResource: sound.rawValue, withExtension: "mp3") else { return }
+        player = try? AVAudioPlayer(contentsOf: url)
+        player?.play()
+    }
+
+    private func stopSound() {
+        player?.stop()
+        player = nil
     }
 }
 
+    // MARK: - UITableViewDataSource & Delegate
 extension SoundPickerViewController: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         AlarmSound.allCases.count
     }
 
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    func tableView(_ tableView: UITableView,
+                   cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let sound = AlarmSound.allCases[indexPath.row]
         return tableView.dequeueReusableCell(withIdentifier: "sound", for: indexPath).then {
-            $0.textLabel?.text  = sound.displayName
+            $0.textLabel?.text      = sound.displayName
             $0.textLabel?.textColor = .white
-            $0.backgroundColor  = UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1)
-            $0.accessoryType    = selected == sound ? .checkmark : .none
-            $0.tintColor        = UIColor(red: 1, green: 0.62, blue: 0.04, alpha: 1)
+            $0.backgroundColor      = UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1)
+            $0.accessoryType        = selected == sound ? .checkmark : .none
+            $0.tintColor            = UIColor(red: 1, green: 0.62, blue: 0.04, alpha: 1)
         }
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         selected = AlarmSound.allCases[indexPath.row]
-        audio.playSound(selected)
+        playSound(selected)
         tableView.reloadData()
     }
 }

@@ -1,4 +1,9 @@
-// AddAlarmViewController.swift
+    //
+    //  AddAlarmViewController.swift
+    //  Check It NOW!
+    //
+    //  Created by t2025-m0239 on 2026.03.23.
+    //
 import UIKit
 import Then
 import SnapKit
@@ -7,14 +12,16 @@ import RxCocoa
 
 final class AddAlarmViewController: UIViewController {
 
-    // MARK: - Callback
-    var onSave: ((AlarmModel) -> Void)?
+        // MARK: - Callback
+    var onSave:   ((AlarmModel) -> Void)?
+    var onDelete: (() -> Void)?
 
-    // MARK: - State
+        // MARK: - State
     private var alarm: AlarmModel
+    private let isEditingAlarm: Bool
     private let disposeBag = DisposeBag()
 
-    // MARK: - UI
+        // MARK: - UI
     private let timePicker = UIDatePicker().then {
         $0.datePickerMode            = .time
         $0.preferredDatePickerStyle  = .wheels
@@ -30,8 +37,9 @@ final class AddAlarmViewController: UIViewController {
         $0.register(LabelCell.self,       forCellReuseIdentifier: LabelCell.reuseID)
     }
 
-    // MARK: - Init
+        // MARK: - Init
     init(alarm: AlarmModel? = nil) {
+        isEditingAlarm = alarm != nil
         if let alarm {
             self.alarm = alarm
         } else {
@@ -40,13 +48,14 @@ final class AddAlarmViewController: UIViewController {
             self.alarm = AlarmModel(
                 hour: cal.component(.hour,   from: now),
                 minute: cal.component(.minute, from: now),
-                label: "알람", isEnabled: true, sound: .radar, repeatDays: [])
+                label: "알람", isEnabled: true, sound: .radar, repeatDays: [],
+                isSnoozeEnabled: true)
         }
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError() }
 
-    // MARK: - Lifecycle
+        // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1)
@@ -55,9 +64,9 @@ final class AddAlarmViewController: UIViewController {
         syncPickerToAlarm()
     }
 
-    // MARK: - Setup
+        // MARK: - Setup
     private func setupNav() {
-        title = alarm.label == "알람" && onSave != nil ? "알람 추가" : "알람 편집"
+        title = isEditingAlarm ? "알람 편집" : "알람 추가"
         let orange = UIColor(red: 1, green: 0.62, blue: 0.04, alpha: 1)
 
         let appearance = UINavigationBarAppearance().then {
@@ -77,7 +86,7 @@ final class AddAlarmViewController: UIViewController {
         navigationItem.leftBarButtonItem  = cancelBtn
         navigationItem.rightBarButtonItem = saveBtn
 
-        // Rx 바인딩
+            // Rx 바인딩
         cancelBtn.rx.tap
             .subscribe(onNext: { [weak self] in self?.dismiss(animated: true) })
             .disposed(by: disposeBag)
@@ -120,22 +129,22 @@ final class AddAlarmViewController: UIViewController {
         if let d = Calendar.current.date(from: comps) { timePicker.date = d }
     }
 
-    // MARK: - Sections
+        // MARK: - Sections
     enum Row { case `repeat`, label, sound, snooze }
     let rows: [Row] = [.repeat, .label, .sound, .snooze]
 }
 
-// MARK: - UITableViewDataSource
+    // MARK: - UITableViewDataSource
 extension AddAlarmViewController: UITableViewDataSource {
 
-    func numberOfSections(in tableView: UITableView) -> Int { 2 }
+    func numberOfSections(in tableView: UITableView) -> Int { isEditingAlarm ? 2 : 1 }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         section == 0 ? rows.count : 1
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        // 삭제 섹션
+            // 삭제 섹션
         if indexPath.section == 1 {
             return tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath).then {
                 $0.textLabel?.text          = "알람 삭제"
@@ -149,84 +158,89 @@ extension AddAlarmViewController: UITableViewDataSource {
         let dayNames = ["일","월","화","수","목","금","토"]
 
         switch rows[indexPath.row] {
-        case .repeat:
-            let sorted = alarm.repeatDays.sorted()
-            var val = "안 함"
-            if sorted == [0,1,2,3,4,5,6]  { val = "매일" }
-            else if sorted == [1,2,3,4,5]  { val = "주중" }
-            else if sorted == [0,6]        { val = "주말" }
-            else if !sorted.isEmpty        { val = sorted.map { dayNames[$0] }.joined(separator: " ") }
-            return tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath).then {
-                $0.textLabel?.text              = "반복"
-                $0.textLabel?.textColor         = .white
-                $0.detailTextLabel?.text        = val
-                $0.detailTextLabel?.textColor   = UIColor(white: 0.5, alpha: 1)
-                $0.accessoryType                = .disclosureIndicator
-                $0.backgroundColor              = UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1)
-            }
-
-        case .label:
-            guard let cell = tableView.dequeueReusableCell(
-                withIdentifier: LabelCell.reuseID, for: indexPath) as? LabelCell else {
-                return UITableViewCell()
-            }
-            cell.configure(text: alarm.label) { [weak self] in self?.alarm.label = $0 }
-            return cell
-
-        case .sound:
-            return tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath).then {
-                $0.textLabel?.text              = "사운드"
-                $0.textLabel?.textColor         = .white
-                $0.detailTextLabel?.text        = alarm.sound.displayName
-                $0.detailTextLabel?.textColor   = UIColor(white: 0.5, alpha: 1)
-                $0.accessoryType                = .disclosureIndicator
-                $0.backgroundColor              = UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1)
-            }
-
-        case .snooze:
-            return tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath).then {
-                $0.textLabel?.text  = "다시 알림"
-                $0.textLabel?.textColor = .white
-                $0.selectionStyle   = .none
-                $0.backgroundColor  = UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1)
-                $0.accessoryView    = UISwitch().then {
-                    $0.isOn        = true
-                    $0.onTintColor = UIColor(red: 0.19, green: 0.82, blue: 0.35, alpha: 1)
+            case .repeat:
+                let sorted = alarm.repeatDays.sorted()
+                var val = "안 함"
+                if sorted == [0,1,2,3,4,5,6]  { val = "매일" }
+                else if sorted == [1,2,3,4,5]  { val = "주중" }
+                else if sorted == [0,6]        { val = "주말" }
+                else if !sorted.isEmpty        { val = sorted.map { dayNames[$0] }.joined(separator: " ") }
+                return tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath).then {
+                    $0.textLabel?.text              = "반복"
+                    $0.textLabel?.textColor         = .white
+                    $0.detailTextLabel?.text        = val
+                    $0.detailTextLabel?.textColor   = UIColor(white: 0.5, alpha: 1)
+                    $0.accessoryType                = .disclosureIndicator
+                    $0.backgroundColor              = UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1)
                 }
-            }
+
+            case .label:
+                guard let cell = tableView.dequeueReusableCell(
+                    withIdentifier: LabelCell.reuseID, for: indexPath) as? LabelCell else {
+                    return UITableViewCell()
+                }
+                cell.configure(text: alarm.label) { [weak self] in self?.alarm.label = $0 }
+                return cell
+
+            case .sound:
+                return tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath).then {
+                    $0.textLabel?.text              = "사운드"
+                    $0.textLabel?.textColor         = .white
+                    $0.detailTextLabel?.text        = alarm.sound.displayName
+                    $0.detailTextLabel?.textColor   = UIColor(white: 0.5, alpha: 1)
+                    $0.accessoryType                = .disclosureIndicator
+                    $0.backgroundColor              = UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1)
+                }
+
+            case .snooze:
+                let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+                cell.textLabel?.text      = "다시 알림"
+                cell.textLabel?.textColor = .white
+                cell.selectionStyle       = .none
+                cell.backgroundColor      = UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1)
+
+                    // 토글 상태를 alarm.isSnoozeEnabled와 동기화합니다.
+                let snoozeToggle = UISwitch().then {
+                    $0.isOn        = alarm.isSnoozeEnabled
+                    $0.onTintColor = UIColor(red: 0.19, green: 0.82, blue: 0.35, alpha: 1)
+                    $0.addTarget(self, action: #selector(snoozeToggleChanged(_:)), for: .valueChanged)
+                }
+                cell.accessoryView = snoozeToggle
+                return cell
         }
     }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { nil }
 }
 
-// MARK: - UITableViewDelegate
+    // MARK: - UITableViewDelegate
 extension AddAlarmViewController: UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
 
         if indexPath.section == 1 {
+            onDelete?()
             dismiss(animated: true)
             return
         }
 
         switch rows[indexPath.row] {
-        case .repeat:
-            let vc = RepeatDayViewController(selected: alarm.repeatDays) { [weak self] days in
-                self?.alarm.repeatDays = days
-                tableView.reloadRows(at: [indexPath], with: .none)
-            }
-            navigationController?.pushViewController(vc, animated: true)
+            case .repeat:
+                let vc = RepeatDayViewController(selected: alarm.repeatDays) { [weak self] days in
+                    self?.alarm.repeatDays = days
+                    tableView.reloadRows(at: [indexPath], with: .none)
+                }
+                navigationController?.pushViewController(vc, animated: true)
 
-        case .sound:
-            let vc = SoundPickerViewController(selected: alarm.sound) { [weak self] sound in
-                self?.alarm.sound = sound
-                tableView.reloadRows(at: [indexPath], with: .none)
-            }
-            navigationController?.pushViewController(vc, animated: true)
+            case .sound:
+                let vc = SoundPickerViewController(selected: alarm.sound) { [weak self] sound in
+                    self?.alarm.sound = sound
+                    tableView.reloadRows(at: [indexPath], with: .none)
+                }
+                navigationController?.pushViewController(vc, animated: true)
 
-        default: break
+            default: break
         }
     }
 
@@ -235,7 +249,17 @@ extension AddAlarmViewController: UITableViewDelegate {
     }
 }
 
-// MARK: - LabelCell
+    // MARK: - Actions
+
+private extension AddAlarmViewController {
+
+        /// 다시 알림 토글 변경 시 alarm.isSnoozeEnabled에 반영합니다.
+    @objc func snoozeToggleChanged(_ sender: UISwitch) {
+        alarm.isSnoozeEnabled = sender.isOn
+    }
+}
+
+    // MARK: - LabelCell
 final class LabelCell: UITableViewCell, UITextFieldDelegate {
     static let reuseID = "LabelCell"
     private var onChange: ((String) -> Void)?
