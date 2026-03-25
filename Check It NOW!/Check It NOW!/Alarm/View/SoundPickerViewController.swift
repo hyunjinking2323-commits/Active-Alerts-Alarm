@@ -7,8 +7,7 @@ import AVFoundation
 import RxSwift
 import RxCocoa
 
-    // MARK: - [BaseViewController 상속]
-    // Base에서 배경색(.black), disposeBag, 기본 생명주기를 관리함
+
 final class SoundPickerViewController: BaseViewController {
 
         // MARK: - [데이터 및 상태 관리]
@@ -84,6 +83,7 @@ final class SoundPickerViewController: BaseViewController {
     }
 
         // MARK: - [오디오 재생 로직]
+
     private func playSound(_ sound: AlarmSound) {
         stopSound()
         guard let url = Bundle.main.url(forResource: sound.rawValue, withExtension: "mp3") else { return }
@@ -112,9 +112,8 @@ extension SoundPickerViewController: UITableViewDataSource {
         cell.backgroundColor      = UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1)
         cell.tintColor            = UIColor(red: 1, green: 0.62, blue: 0.04, alpha: 1)
 
-            // 현재 선택된 사운드와 같으면 체크마크 표시
+            // 현재 선택된 사운드와 같으면 체크 표시
         cell.accessoryType = (selected == sound) ? .checkmark : .none
-
         return cell
     }
 }

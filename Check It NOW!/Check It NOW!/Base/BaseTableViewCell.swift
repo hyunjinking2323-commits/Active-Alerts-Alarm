@@ -29,7 +29,6 @@ class BaseTableViewCell: UITableViewCell {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         self.selectionStyle = .none
         self.backgroundColor = .black // 기본 배경 투명 (시계 앱은 보통 검은색 배경)
-
         setupHierarchy()
         setupLayout()
         configureUI()

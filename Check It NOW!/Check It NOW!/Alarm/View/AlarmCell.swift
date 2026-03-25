@@ -11,36 +11,45 @@ import SnapKit
 import RxSwift
 import RxCocoa
 
+
 final class AlarmCell: BaseTableViewCell {
 
         // MARK: - [UI 컴포넌트]
     private let timeLabel = UILabel().then {
         $0.font = .systemFont(ofSize: 48, weight: .regular)
+
         $0.textColor = .white
     }
 
     private let ampmLabel = UILabel().then {
+
         $0.font = .systemFont(ofSize: 24, weight: .regular)
+
         $0.textColor = .white
     }
 
     private let subLabel = UILabel().then {
+
         $0.font = .systemFont(ofSize: 15, weight: .regular)
         $0.textColor = .white
+
     }
 
     let toggle = UISwitch().then {
         $0.onTintColor = UIColor(red: 0.19, green: 0.82, blue: 0.35, alpha: 1)
     }
 
+
         // MARK: - [레이아웃 구성]
     override func setupHierarchy() {
             // 1. [오전/오후 + 시간] 스택 (왼쪽 정렬)
         let timeRow = UIStackView(arrangedSubviews: [ampmLabel, timeLabel]).then {
+
             $0.axis      = .horizontal
             $0.alignment = .lastBaseline
             $0.spacing   = 5
         }
+
             // 2. [시간줄 + 반복라벨] 스택 (세로 정렬)
         let vStack = UIStackView(arrangedSubviews: [timeRow, subLabel]).then {
             $0.axis    = .vertical
@@ -58,12 +67,14 @@ final class AlarmCell: BaseTableViewCell {
 
         contentView.addSubview(hStack)
 
+
         hStack.snp.makeConstraints {
             $0.leading.equalToSuperview().offset(20)
             $0.trailing.equalToSuperview().inset(20)
             $0.top.equalToSuperview().offset(10)
             $0.bottom.equalToSuperview().inset(10)
         }
+
             // spacer가 가질 수 있는 모든 공간을 차지하게 함으로써 토글을 오른쪽 끝으로 밀어냅니다.
         spacer.snp.makeConstraints {
             $0.width.greaterThanOrEqualTo(10)

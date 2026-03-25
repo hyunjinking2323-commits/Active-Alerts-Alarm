@@ -1,8 +1,17 @@
+
+    //
+    //  AddAlarmViewController.swift
+    //  Check It NOW!
+    //
+    //  Created by t2025-m0239 on 2026.03.23.
+    //
+
 import UIKit
 import Then
 import SnapKit
 import RxSwift
 import RxCocoa
+
 
 final class AddAlarmViewController: BaseViewController {
 
@@ -63,6 +72,7 @@ final class AddAlarmViewController: BaseViewController {
 
         // MARK: - [레이아웃 설정 - BaseViewController 오버라이드]
     override func setupLayout() {
+
         timePicker.snp.makeConstraints {
             $0.top.equalTo(view.safeAreaLayoutGuide).offset(8)
             $0.leading.trailing.equalToSuperview()
@@ -83,11 +93,13 @@ final class AddAlarmViewController: BaseViewController {
         timePicker.rx.date
             .subscribe(onNext: { [weak self] date in
                 let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+
                 self?.alarm.hour   = c.hour   ?? 0
                 self?.alarm.minute = c.minute ?? 0
             })
             .disposed(by: disposeBag)
     }
+
 
         // MARK: - [네비게이션 바 설정]
     private func setupNavigationBar() {

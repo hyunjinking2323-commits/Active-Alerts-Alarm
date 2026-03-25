@@ -55,6 +55,7 @@ struct AlarmModel: Codable, Identifiable {
         /// false면 발화 팝업에서 "다시 알림" 버튼이 표시되지 않습니다.
     var isSnoozeEnabled: Bool
     var snoozeInterval: Int = 15
+
         // MARK: - Computed Properties
 
         /// 12시간제 시각 문자열 (예: "7:30", "12:05")

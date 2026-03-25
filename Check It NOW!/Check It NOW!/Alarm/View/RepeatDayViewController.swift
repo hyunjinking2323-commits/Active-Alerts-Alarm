@@ -5,6 +5,7 @@ import RxCocoa
 import Then
 import SnapKit
 
+
 final class RepeatDayViewController: BaseViewController {
 
         // MARK: - [데이터 및 상태 관리]
@@ -70,6 +71,7 @@ final class RepeatDayViewController: BaseViewController {
     }
 
     private func setupNavigationBarAppearance() {
+
         let appearance = UINavigationBarAppearance().then {
             $0.configureWithOpaqueBackground()
             $0.backgroundColor     = UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1)
@@ -77,6 +79,7 @@ final class RepeatDayViewController: BaseViewController {
         }
         navigationController?.navigationBar.standardAppearance   = appearance
         navigationController?.navigationBar.scrollEdgeAppearance = appearance
+
     }
 }
 
@@ -98,5 +101,6 @@ extension RepeatDayViewController: UITableViewDataSource {
         cell.accessoryType = selected.contains(indexPath.row) ? .checkmark : .none
 
         return cell
+
     }
 }

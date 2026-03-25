@@ -1,3 +1,12 @@
+
+
+//
+//  AlarmViewController.swift
+//  Check It NOW!
+//
+//  Created by t2025-m0239 on 2026.03.23.
+//
+
 import UIKit
 import Then
 import SnapKit
@@ -5,6 +14,7 @@ import RxSwift
 import RxCocoa
 
 final class AlarmViewController: BaseViewController {
+
 
         // MARK: - Properties & ViewModel
     private let viewModel = AlarmViewModel()
@@ -15,11 +25,13 @@ final class AlarmViewController: BaseViewController {
         // MARK: - UI Components
     private let bannerView = UIView().then {
         $0.backgroundColor = UIColor(white: 0.15, alpha: 1)
+
         $0.layer.cornerRadius = 10
         $0.isHidden = true
     }
 
     private let bannerLabel = UILabel().then {
+
         $0.font = .systemFont(ofSize: 13)
         $0.textColor = UIColor(white: 0.85, alpha: 1)
         $0.textAlignment = .center
@@ -36,12 +48,14 @@ final class AlarmViewController: BaseViewController {
     override func setupHierarchy() {
         [bannerView, tableView].forEach { view.addSubview($0) }
         bannerView.addSubview(bannerLabel)
+
     }
 
     override func setupLayout() {
         bannerView.snp.makeConstraints {
             $0.leading.trailing.equalToSuperview().inset(16)
             $0.top.equalTo(view.safeAreaLayoutGuide).offset(8)
+
             $0.height.equalTo(32)
         }
 
@@ -109,6 +123,7 @@ final class AlarmViewController: BaseViewController {
         tableView.rx.modelSelected(AlarmModel.self)
             .subscribe(onNext: { [weak self] alarm in
                 self?.showEditSheet(alarm)
+
             })
             .disposed(by: disposeBag)
     }
