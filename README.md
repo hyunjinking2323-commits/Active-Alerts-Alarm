@@ -1,81 +1,225 @@
-📱 Check It NOW!
-High-Precision iOS Utility: Alarm, StopWatch, & Timer
-RxSwift 기반의 반응형 프로그래밍과 MVVM 아키텍처를 결합하여 사용자에게 심리스(Seamless)하고 정교한 시간 관리 경험을 제공하는 iOS 유틸리티 앱입니다.
+# ⏰ Check It NOW!
 
-📸 Preview
-알람 (Alarm)	스톱워치 (Stopwatch)	타이머 (Timer)
-실제 앱 실행 화면(GIF/이미지)을 이곳에 배치하면 시각적 설득력이 높아집니다.
+> 알람을 끄려면 미션을 풀어야 하는 종합 시계 유틸리티 앱
 
-🚀 Key Highlights
-Transform 기반 I/O Modeling: RxSwift를 활용한 단방향 데이터 흐름 설계로 상태 관리의 신뢰성과 테스트 용이성을 확보했습니다.
+<br>
+**팀명** 현지니예~  
+**팀 목표** MVVM 아키텍처와 RxSwift를 사용하여 깔끔한 코드를 작성하고 UI 상태 관리의 복잡도를 낮추기ㅊ
 
-Seamless Core Animation: presentationLayer() 캡처 기법을 통해 일시정지/재개 시에도 끊김 없는 60fps Circular Progress UI를 구현했습니다.
+<br>
 
-High-Reliability Audio: AVAudioSession 정밀 제어로 무음 모드 및 백그라운드 환경에서도 누락 없는 알람 시스템을 구축했습니다.
+## 👤 팀 정보
 
-User-Centric UX: 드래그 인터랙션으로 종료 시간을 즉각 연장하는 Interactive Timer Finish View를 설계하여 직관성을 높였습니다.
+| 이름 | 역할 | GitHub |
+|:---:|:---:|:---:|
+| 우현진 | iOS Developer | [@hyunjinking2323](https://github.com/hyunjinking2323-commits) |
 
-🛠 Tech Stack
-Category	Technology
-Language	Swift 5.10
-Framework	UIKit (Programmatic UI)
-Reactive	RxSwift, RxCocoa, RxRelay
-Layout	SnapKit, Then
-Architecture	MVVM with Transform-based I/O Modeling
-Persistence	CoreData, UserDefaults (JSON Serialization)
-Media/System	AVFoundation, UserNotifications, AudioToolbox
-🏗 Directory Structure
-Plaintext
+<br>
+
+## 📅 개발 기간
+
+2026.03.20 ~ 2026.03.30 (11일)
+
+<br>
+
+## 🎯 기획 의도
+
+아침에 알람을 끄고 다시 자는 습관을 고치기 위해 만들었습니다.  
+알람을 끄려면 미션을 풀어야 하고, 풀지 않으면 최대 볼륨으로 계속 울립니다.
+
+<br>
+
+## 🛠 기술 스택
+
+| 분류 | 사용 기술 |
+|:---:|:---:|
+| Language | Swift |
+| UI | UIKit, SnapKit 5.7.1 |
+| Reactive | RxSwift 6.10.2, RxCocoa |
+| Architecture | MVVM (Input/Output 패턴) |
+| Notification | UNUserNotificationCenter |
+| Storage | CoreData |
+| Minimum | iOS 16.6 |
+| IDE | Xcode 16.3 |
+
+<br>
+
+## 📂 폴더 구조
+```
 CheckItNOW
-├── App (AppDelegate, SceneDelegate, AppAppearance)
-├── Models (AlarmModel, TimerModel, SoundModel)
-├── ViewModels (AlarmViewModel, TimerViewModel, StopWatchViewModel)
-└── Views
-    ├── Alarm (AlarmViewController, AlarmCell, AddAlarmViewController)
-    ├── StopWatch (StopWatchViewController, LapCell)
-    └── Timer (TimerViewController, TimerCell, CircularProgressView)
-🔥 Technical Challenges & Solutions
-1. 고정밀 타이머 애니메이션 연속성 확보
-Problem: 타이머를 일시정지하거나 재시작할 때 애니메이션이 초기 위치로 리셋되거나 흐름이 끊기는 현상 발생.
+├── App
+│   ├── AppDelegate.swift
+│   └── AppAppearance.swift
+├── Alarm
+│   ├── Model
+│   │   └── AlarmModel.swift
+│   ├── View
+│   │   ├── AlarmViewController.swift
+│   │   └── AlarmCell.swift
+│   └── ViewModel
+│       └── AlarmViewModel.swift
+├── Stopwatch
+│   ├── View
+│   │   └── StopwatchViewController.swift
+│   └── ViewModel
+│       └── StopwatchViewModel.swift
+├── Timer
+│   ├── Model
+│   │   ├── TimerModel.swift
+│   │   ├── ActiveTimer.swift
+│   │   └── TimerState.swift
+│   ├── View
+│   │   ├── TimerListViewController.swift
+│   │   ├── TimerCell.swift
+│   │   └── TimerFinishView.swift
+│   └── ViewModel
+│       └── TimerViewModel.swift
+└── Common
+    └── CircularProgressView.swift
+```
 
-Cause: 애니메이션 재시작 시 렌더링 트리의 현재 상태값이 아닌, 모델의 속성값을 기준으로 새 애니메이션이 생성되기 때문임.
+<br>
 
-Solution: presentationLayer()를 통해 렌더링 트리의 실시간 strokeStart 값을 캡처하여 애니메이션의 fromValue로 지정. 이를 통해 어떤 시점에서든 연속성 있는 애니메이션을 보장했습니다.
+## ✅ 구현 기능
 
-Optimization: CATransaction을 활용해 리셋 시 발생하는 암시적 애니메이션(Implicit Animation)을 차단하여 즉각적인 UI 반응성을 확보했습니다.
+### 필수 구현
 
-2. 하드웨어 레벨의 신뢰성 높은 알람 시스템
-Challenge: 앱이 백그라운드에 있거나 사용자가 무음 모드를 활성화했을 때 알람이 울리지 않을 가능성 대응.
+- [x] MVVM 디자인 패턴 적용
+- [x] 알람 추가 · 수정 · 삭제
+- [x] 알람 ON/OFF 스위치
+- [x] 알람 반복 요일 · 레이블 · 사운드 설정
+- [x] 지정 시각 알람 사운드 재생
+- [x] 스톱워치 (시작 · 일시정지 · 재개 · 초기화)
+- [x] 스톱워치 랩 기록 (최단/최장 하이라이트)
+- [x] 타이머 시간 설정
+- [x] 타이머 완료 시 사운드 재생
 
-Solution: * AVAudioSession.Category.playback과 .mixWithOthers 옵션을 조합하여 시스템 설정에 관계없이 사운드가 출력되도록 설계.
+### 도전 구현
 
-Fallback Strategy: 커스텀 MP3 리소스 로드 실패 시 AudioServicesPlaySystemSound를 통해 시스템 기본음이 출력되도록 이중화 로직 구현.
+- [x] 원형 Progress Bar (CAShapeLayer strokeStart 애니메이션)
+- [x] 다중 타이머 동시 실행 (UUID 기반 ActiveTimer)
 
-UNCalendarNotificationTrigger를 활용해 앱 종료 상태에서도 정확한 시간에 로컬 알림이 트리거되도록 처리했습니다.
+<br>
 
-3. Reactive UI의 메모리 누수 및 구독 중첩 방지
-Challenge: TableView Cell 재사용 시 기존 구독이 유지되어, 이벤트가 중복 방출되거나 메모리 사용량이 증가하는 문제.
+## 💡 핵심 구현 포인트
 
-Solution: 셀의 prepareForReuse() 시점에서 DisposeBag을 초기화하는 패턴을 엄격히 적용하여, 셀이 재사용될 때마다 이전 구독을 명확히 제거했습니다.
+### MVVM Input/Output 패턴
 
-💻 Code Snippet: I/O Modeling
-ViewModel의 비즈니스 로직을 Input과 Output으로 명확히 분리하여 데이터 흐름을 한눈에 파악할 수 있도록 설계했습니다.
+모든 ViewModel에 Input/Output 구조체를 정의해서 데이터 흐름을 단방향으로 관리했습니다.
+```swift
+struct Input {
+    let toggleAlarm: Observable<(AlarmModel, Bool)>
+    let addAlarm: Observable<AlarmModel>
+    let deleteAlarm: Observable<IndexPath>
+}
 
-Swift
+struct Output {
+    let alarms: Driver<[AlarmModel]>
+    let nextAlarmCountdown: Driver<String>
+}
+
 func transform(input: Input) -> Output {
-    let timerState = BehaviorRelay<TimerState>(value: .setting)
-    
-    // 시작/일시정지 로직 처리
-    input.startPause
-        .subscribe(onNext: { _ in
-            let currentState = timerState.value
-            timerState.accept(currentState == .running ? .paused : .running)
+    input.toggleAlarm
+        .withUnretained(self)
+        .subscribe(onNext: { owner, pair in
+            let (alarm, isOn) = pair
+            isOn
+                ? owner.scheduleNotification(for: alarm)
+                : UNUserNotificationCenter.current()
+                    .removePendingNotificationRequests(
+                        withIdentifiers: [alarm.id.uuidString]
+                    )
         })
         .disposed(by: disposeBag)
 
     return Output(
-        timeText: timeTextRelay.asDriver(),
-        progress: progressRelay.asDriver(),
-        timerState: timerState.asDriver()
+        alarms: alarmsRelay.asDriver(),
+        nextAlarmCountdown: countdownRelay.asDriver()
     )
 }
+```
+
+### 다중 타이머 — ActiveTimer 구조체
+
+타이머마다 UUID를 부여해서 동시 실행과 개별 알림 관리가 가능하도록 설계했습니다.
+```swift
+struct ActiveTimer {
+    let id: UUID
+    let timerModel: TimerModel
+    var remainingSeconds: Int
+    var timer: Timer?
+    var notificationID: String { id.uuidString }
+}
+```
+
+### 원형 Progress Bar — strokeStart 애니메이션
+
+`strokeEnd` 대신 `strokeStart`를 0 → 1로 애니메이션해서 시계 방향으로 줄어드는 효과를 구현했습니다.
+```swift
+func setProgress(_ progress: CGFloat) {
+    let anim = CABasicAnimation(keyPath: "strokeStart")
+    anim.fromValue = progressLayer.strokeStart
+    anim.toValue   = progress
+    anim.duration  = 0.4
+    progressLayer.add(anim, forKey: "progress")
+    progressLayer.strokeStart = progress
+}
+```
+
+### CADisplayLink 기반 스톱워치
+
+일반 `Timer` 대신 `CADisplayLink`를 사용해 드리프트 없는 1/100초 측정을 구현했습니다.
+```swift
+func startDisplayLink() {
+    displayLink = CADisplayLink(target: self, selector: #selector(tick))
+    displayLink?.add(to: .main, forMode: .common)
+}
+
+@objc func tick() {
+    elapsed = CACurrentMediaTime() - startTime
+    let minutes    = Int(elapsed) / 60
+    let seconds    = Int(elapsed) % 60
+    let hundredths = Int(elapsed * 100) % 100
+    timeRelay.accept(
+        String(format: "%02d:%02d.%02d", minutes, seconds, hundredths)
+    )
+}
+```
+
+<br>
+
+## 🐛 트러블슈팅
+
+### 1. performBatchUpdates 타이밍 크래시
+
+**문제** UIKit이 블록 실행 전에 행 수를 스냅샷해두기 때문에, 블록 안에서 데이터소스를 변경하면 count 불일치로 크래시 발생  
+**해결** `reloadData()`로 교체, `rx.items`와 수동 reload 혼용을 `combineLatest + map` 파이프라인으로 통일
+
+### 2. 셀 ViewModel 공유로 인한 상태 동기화 버그
+
+**문제** 여러 셀이 동일한 ViewModel 인스턴스를 참조해서, 한 셀 변경이 전체 셀에 반영  
+**해결** `configure(with:)` 호출 시 각 셀마다 새 ViewModel 인스턴스를 생성·주입
+
+### 3. TimerState 순환 참조 컴파일 에러
+
+**문제** `TimerCell` ↔ `TimerViewModel` 상호 import 구조로 인한 순환 의존성  
+**해결** `TimerState`를 별도 파일의 top-level enum으로 분리
+
+### 4. 탭 전환 시 NavigationBar 색상 초기화
+
+**문제** 탭 전환마다 커스텀 appearance가 리셋되어 검정 배경이 사라짐  
+**해결** `AppAppearance` enum을 `AppDelegate.didFinishLaunching`에서 한 번만 호출해 전역 고정
+```swift
+enum AppAppearance {
+    static func apply() {
+        let nav = UINavigationBarAppearance()
+        nav.configureWithOpaqueBackground()
+        nav.backgroundColor = .black
+        UINavigationBar.appearance().standardAppearance = nav
+
+        let tab = UITabBarAppearance()
+        tab.configureWithOpaqueBackground()
+        UITabBar.appearance().standardAppearance = tab
+    }
+}
+```
