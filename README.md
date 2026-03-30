@@ -3,8 +3,10 @@
 > 알람을 끄려면 미션을 풀어야 하는 종합 시계 유틸리티 앱
 
 <br>
-**팀명** 현지니예~  
-**팀 목표** MVVM 아키텍처와 RxSwift를 사용하여 깔끔한 코드를 작성하고 UI 상태 관리의 복잡도를 낮추기ㅊ
+
+## 📅 개발 기간
+
+2026.03.20 ~ 2026.03.30 (11일)
 
 <br>
 
@@ -14,11 +16,8 @@
 |:---:|:---:|:---:|
 | 우현진 | iOS Developer | [@hyunjinking2323](https://github.com/hyunjinking2323-commits) |
 
-<br>
-
-## 📅 개발 기간
-
-2026.03.20 ~ 2026.03.30 (11일)
+**팀명** 현지니예~  
+**팀 목표** MVVM 아키텍처와 RxSwift를 사용하여 깔끔한 코드를 작성하고 UI 상태 관리의 복잡도를 낮추기
 
 <br>
 
@@ -26,6 +25,18 @@
 
 아침에 알람을 끄고 다시 자는 습관을 고치기 위해 만들었습니다.  
 알람을 끄려면 미션을 풀어야 하고, 풀지 않으면 최대 볼륨으로 계속 울립니다.
+
+<br>
+
+## 📱 스크린샷
+
+| 알람 목록 | 알람 추가 | 반복 설정 | 사운드 선택 |
+|:---:|:---:|:---:|:---:|
+| <img src="" width="200"/> | <img src="" width="200"/> | <img src="" width="200"/> | <img src="" width="200"/> |
+
+| 타이머 목록 | 타이머 실행 중 | 타이머 추가 |
+|:---:|:---:|:---:|
+| <img src="" width="200"/> | <img src="" width="200"/> | <img src="" width="200"/> |
 
 <br>
 
@@ -99,6 +110,12 @@ CheckItNOW
 - [x] 원형 Progress Bar (CAShapeLayer strokeStart 애니메이션)
 - [x] 다중 타이머 동시 실행 (UUID 기반 ActiveTimer)
 
+### Git
+
+- [x] git add / commit / push
+- [x] 브랜치 / PR / merge
+- [ ] Code Review
+
 <br>
 
 ## 💡 핵심 구현 포인트
@@ -150,11 +167,25 @@ struct ActiveTimer {
     var timer: Timer?
     var notificationID: String { id.uuidString }
 }
+
+func tickTimer(id: UUID) {
+    guard let idx = activeTimers.firstIndex(
+        where: { $0.id == id }) else { return }
+    activeTimers[idx].remainingSeconds -= 1
+
+    if activeTimers[idx].remainingSeconds <= 0 {
+        finishedTimerRelay.accept(activeTimers[idx])
+        scheduleFinishNotification(id: id)
+        activeTimers.remove(at: idx)
+    }
+    activeTimersRelay.accept(activeTimers)
+}
 ```
 
 ### 원형 Progress Bar — strokeStart 애니메이션
 
-`strokeEnd` 대신 `strokeStart`를 0 → 1로 애니메이션해서 시계 방향으로 줄어드는 효과를 구현했습니다.
+`strokeEnd` 대신 `strokeStart`를 0 → 1로 애니메이션해서  
+시계 방향으로 줄어드는 효과를 구현했습니다.
 ```swift
 func setProgress(_ progress: CGFloat) {
     let anim = CABasicAnimation(keyPath: "strokeStart")
@@ -168,10 +199,13 @@ func setProgress(_ progress: CGFloat) {
 
 ### CADisplayLink 기반 스톱워치
 
-일반 `Timer` 대신 `CADisplayLink`를 사용해 드리프트 없는 1/100초 측정을 구현했습니다.
+일반 `Timer` 대신 `CADisplayLink`를 사용해  
+드리프트 없는 1/100초 측정을 구현했습니다.
 ```swift
 func startDisplayLink() {
-    displayLink = CADisplayLink(target: self, selector: #selector(tick))
+    displayLink = CADisplayLink(
+        target: self, selector: #selector(tick)
+    )
     displayLink?.add(to: .main, forMode: .common)
 }
 
@@ -181,34 +215,16 @@ func startDisplayLink() {
     let seconds    = Int(elapsed) % 60
     let hundredths = Int(elapsed * 100) % 100
     timeRelay.accept(
-        String(format: "%02d:%02d.%02d", minutes, seconds, hundredths)
+        String(format: "%02d:%02d.%02d",
+               minutes, seconds, hundredths)
     )
 }
 ```
 
-<br>
+### AppAppearance — 전역 외관 고정
 
-## 🐛 트러블슈팅
-
-### 1. performBatchUpdates 타이밍 크래시
-
-**문제** UIKit이 블록 실행 전에 행 수를 스냅샷해두기 때문에, 블록 안에서 데이터소스를 변경하면 count 불일치로 크래시 발생  
-**해결** `reloadData()`로 교체, `rx.items`와 수동 reload 혼용을 `combineLatest + map` 파이프라인으로 통일
-
-### 2. 셀 ViewModel 공유로 인한 상태 동기화 버그
-
-**문제** 여러 셀이 동일한 ViewModel 인스턴스를 참조해서, 한 셀 변경이 전체 셀에 반영  
-**해결** `configure(with:)` 호출 시 각 셀마다 새 ViewModel 인스턴스를 생성·주입
-
-### 3. TimerState 순환 참조 컴파일 에러
-
-**문제** `TimerCell` ↔ `TimerViewModel` 상호 import 구조로 인한 순환 의존성  
-**해결** `TimerState`를 별도 파일의 top-level enum으로 분리
-
-### 4. 탭 전환 시 NavigationBar 색상 초기화
-
-**문제** 탭 전환마다 커스텀 appearance가 리셋되어 검정 배경이 사라짐  
-**해결** `AppAppearance` enum을 `AppDelegate.didFinishLaunching`에서 한 번만 호출해 전역 고정
+탭 전환 시 NavigationBar / TabBar 색상이 초기화되는 문제를  
+`AppDelegate`에서 앱 시작 시 한 번만 호출해 전역 고정했습니다.
 ```swift
 enum AppAppearance {
     static func apply() {
@@ -222,4 +238,54 @@ enum AppAppearance {
         UITabBar.appearance().standardAppearance = tab
     }
 }
+
+// AppDelegate.swift
+AppAppearance.apply()
 ```
+
+<br>
+
+## 🐛 트러블슈팅
+
+### 1. performBatchUpdates 타이밍 크래시
+
+**문제**  
+UIKit이 블록 실행 전에 행 수를 스냅샷해두기 때문에,  
+블록 안에서 데이터소스를 변경하면 count 불일치로 크래시 발생
+
+**해결**  
+`reloadData()`로 교체, `rx.items`와 수동 reload 혼용을  
+`combineLatest + map` 파이프라인으로 통일
+
+---
+
+### 2. 셀 ViewModel 공유로 인한 상태 동기화 버그
+
+**문제**  
+여러 셀이 동일한 ViewModel 인스턴스를 참조해서  
+한 셀 변경이 전체 셀에 반영되는 현상
+
+**해결**  
+`configure(with:)` 호출 시 각 셀마다 새 ViewModel 인스턴스를 생성·주입
+
+---
+
+### 3. TimerState 순환 참조 컴파일 에러
+
+**문제**  
+`TimerCell` ↔ `TimerViewModel` 상호 import 구조로  
+인한 순환 의존성 → 컴파일 에러
+
+**해결**  
+`TimerState`를 별도 파일의 top-level enum으로 분리
+
+---
+
+### 4. 탭 전환 시 NavigationBar 색상 초기화
+
+**문제**  
+탭 전환마다 커스텀 appearance가 리셋되어 검정 배경이 사라짐
+
+**해결**  
+`AppAppearance.apply()`를 `AppDelegate.didFinishLaunching`에서  
+한 번만 호출해 전역 고정
