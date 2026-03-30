@@ -1,17 +1,17 @@
-//
-//  StopWatchViewModel.swift
-//  Check It NOW!
-//
-//  Created by t2025-m0239 on 2026.03.23.
-//
-
+    //
+    //  StopWatchViewModel.swift
+    //  Check It NOW!
+    //
+    //  Created by t2025-m0239 on 2026.03.23.
+    //
 
 import Foundation
 import RxSwift
 import RxCocoa
-import RxRelay
 
-final class StopWatchViewModel: ViewModelType {
+final class StopWatchViewModel {
+
+        // MARK: - Input / Output
 
     struct Input {
         let startButtonTap: ControlEvent<Void>
@@ -19,69 +19,60 @@ final class StopWatchViewModel: ViewModelType {
     }
 
     struct Output {
-        let timeText:       Driver<String>
-        let isRunning:      Driver<Bool>
-        let hasElapsed:     Driver<Bool>
-        let laps:           Driver<[String]>
-        let fastestIdx:     Driver<Int?>
-        let slowestIdx:     Driver<Int?>
-        let currentLapText: Driver<String>
+        let timeText:       Driver<String>   // 전체 경과 시간
+        let isRunning:      Driver<Bool>     // 실행 여부
+        let hasElapsed:     Driver<Bool>     // 1번이라도 시작했는지
+        let laps:           Driver<[String]> // 기록된 랩 목록
+        let fastestIdx:     Driver<Int?>     // 가장 빠른 랩 인덱스
+        let slowestIdx:     Driver<Int?>     // 가장 느린 랩 인덱스
+        let currentLapText: Driver<String>   // 현재 랩 진행 시간
     }
+
+        // MARK: - Properties
 
     private let disposeBag = DisposeBag()
 
-        // MARK: - Private State
     private let isRunningRelay      = BehaviorRelay<Bool>(value: false)
     private let hasElapsedRelay     = BehaviorRelay<Bool>(value: false)
     private let timeTextRelay       = BehaviorRelay<String>(value: "00:00.00")
     private let currentLapTextRelay = BehaviorRelay<String>(value: "00:00.00")
     private let lapsRelay           = BehaviorRelay<[TimeInterval]>(value: [])
 
-        /// 타이머가 시작된 시각
     private var startDate:     Date?
-        /// 일시정지까지 쌓인 누적 경과 시간
-    private var elapsedBefore: TimeInterval = 0
-        /// 현재 랩이 시작된 시점의 누적 경과 시간
-    private var lapStart:      TimeInterval = 0
+    private var elapsedBefore: TimeInterval = 0  // 일시정지까지 쌓인 누적 경과 시간
+    private var lapStart:      TimeInterval = 0  // 현재 랩 시작 시점의 누적 경과 시간
 
     private var timerDisposable: Disposable?
 
-        // MARK: - Transform
-    func transform(input: Input) -> Output {
+    deinit { print("\(Self.self) deinit") }
 
-            // 시작 / 중단
+        // MARK: - Transform
+
+    func transform(input: Input) -> Output {
+            // 시작 / 중단 토글
         input.startButtonTap
             .subscribe(onNext: { [weak self] in
                 guard let self else { return }
-                let running = !self.isRunningRelay.value
-                self.isRunningRelay.accept(running)
-                if running {
-                    self.startTimer()
-                } else {
-                    self.pauseTimer()
-                }
+                let running = !isRunningRelay.value
+                isRunningRelay.accept(running)
+                running ? startTimer() : pauseTimer()
             })
             .disposed(by: disposeBag)
 
-            // 랩 / 초기화
+            // 랩 기록 / 초기화
         input.lapButtonTap
             .subscribe(onNext: { [weak self] in
                 guard let self else { return }
-                if self.isRunningRelay.value {
-                    self.recordLap()
-                } else {
-                    self.reset()
-                }
+                isRunningRelay.value ? recordLap() : reset()
             })
             .disposed(by: disposeBag)
 
+            // 랩 목록 → 문자열 배열 변환
         let lapsStringDriver = lapsRelay
-            .map { [weak self] laps -> [String] in
-                guard let self else { return [] }
-                return laps.map { self.format($0) }
-            }
+            .map { [weak self] laps -> [String] in laps.map { self?.format($0) ?? "" } }
             .asDriver(onErrorJustReturn: [])
 
+            // 가장 빠른 랩 인덱스 (2개 이상일 때만 유효)
         let fastestIdx = lapsRelay
             .map { laps -> Int? in
                 guard laps.count >= 2 else { return nil }
@@ -89,6 +80,7 @@ final class StopWatchViewModel: ViewModelType {
             }
             .asDriver(onErrorJustReturn: nil)
 
+            // 가장 느린 랩 인덱스 (2개 이상일 때만 유효)
         let slowestIdx = lapsRelay
             .map { laps -> Int? in
                 guard laps.count >= 2 else { return nil }
@@ -106,22 +98,27 @@ final class StopWatchViewModel: ViewModelType {
             currentLapText: currentLapTextRelay.asDriver()
         )
     }
+}
 
-        // MARK: - Timer Control
-    private func startTimer() {
+    // MARK: - Timer Control
+
+private extension StopWatchViewModel {
+
+    func startTimer() {
         startDate = Date()
         hasElapsedRelay.accept(true)
+            // 10ms 간격으로 UI 갱신
         timerDisposable = Observable<Int>
             .interval(.milliseconds(10), scheduler: MainScheduler.instance)
             .subscribe(onNext: { [weak self] _ in
-                guard let self, let start = self.startDate else { return }
-                let total = self.elapsedBefore + Date().timeIntervalSince(start)
-                self.timeTextRelay.accept(self.format(total))
-                self.currentLapTextRelay.accept(self.format(total - self.lapStart))
+                guard let self, let start = startDate else { return }
+                let total = elapsedBefore + Date().timeIntervalSince(start)
+                timeTextRelay.accept(format(total))
+                currentLapTextRelay.accept(format(total - lapStart))
             })
     }
 
-    private func pauseTimer() {
+    func pauseTimer() {
         if let start = startDate {
             elapsedBefore += Date().timeIntervalSince(start)
         }
@@ -130,18 +127,17 @@ final class StopWatchViewModel: ViewModelType {
         timerDisposable = nil
     }
 
-    private func recordLap() {
+    func recordLap() {
         guard let start = startDate else { return }
         let total   = elapsedBefore + Date().timeIntervalSince(start)
         let lapTime = total - lapStart
         lapStart    = total
-
         var current = lapsRelay.value
         current.append(lapTime)
         lapsRelay.accept(current)
     }
 
-    private func reset() {
+    func reset() {
         timerDisposable?.dispose()
         timerDisposable = nil
         startDate       = nil
@@ -153,8 +149,8 @@ final class StopWatchViewModel: ViewModelType {
         hasElapsedRelay.accept(false)
     }
 
-        // MARK: - Formatter
-    private func format(_ interval: TimeInterval) -> String {
+        /// TimeInterval → "MM:SS.cc" 형식
+    func format(_ interval: TimeInterval) -> String {
         let total   = Int(interval * 100)
         let centis  = total % 100
         let seconds = (total / 100) % 60

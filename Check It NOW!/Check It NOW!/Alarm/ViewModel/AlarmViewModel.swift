@@ -1,187 +1,252 @@
-//
-//  AlarmViewModel.swift
-//  Check It NOW!
-//
-//  Created by t2025-m0239 on 2026.03.23.
-//
+    //
+    //  AlarmViewModel.swift
+    //  Check It NOW!
+    //
 
 import Foundation
-import AVFoundation
-import UserNotifications
 import RxSwift
-import RxRelay
+import RxCocoa
+import UserNotifications
+import AVFoundation
 
-final class AlarmViewModel: ViewModelType {
+    // MARK: - AlarmViewModel
 
-        // MARK: - I/O 정의
+final class AlarmViewModel {
+
+        // MARK: - Input / Output
+
     struct Input {
         let viewDidLoad: Observable<Void>
-        let addAlarm: PublishRelay<AlarmModel>
+        let addAlarm:    PublishRelay<AlarmModel>
         let updateAlarm: PublishRelay<AlarmModel>
         let deleteAlarm: PublishRelay<Int>
     }
 
     struct Output {
-        let alarmList: BehaviorRelay<[AlarmModel]>
-        let nextFireText: BehaviorRelay<String?>
-        let alarmFired: PublishRelay<AlarmModel>
+        let alarmList:    Driver<[AlarmModel]> // 알람 목록
+        let nextFireText: Driver<String?>      // 다음 알람 시각 텍스트 (없으면 nil)
+        let alarmFired:   Observable<AlarmModel>
     }
 
         // MARK: - Properties
+
     private let disposeBag = DisposeBag()
-    private let persistenceKey = "saved_alarms"
 
-    private let alarmRelay = BehaviorRelay<[AlarmModel]>(value: [])
-    private let nextFireRelay = BehaviorRelay<String?>(value: nil)
-    private let fireRelay = PublishRelay<AlarmModel>()
+    private let alarmsRelay     = BehaviorRelay<[AlarmModel]>(value: [])
+    private let alarmFiredRelay = PublishRelay<AlarmModel>()
+    private let persistenceKey  = "saved_alarms"
+    private var audioPlayer: AVAudioPlayer?
 
-    private var player: AVAudioPlayer?
-    private var fireTimer: Timer?
+        /// DateFormatter 재사용 (매번 생성 비용 절약)
+    private let nextFireFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "a h:mm"
+        f.locale = Locale(identifier: "ko_KR")
+        return f
+    }()
 
-    var currentAlarms: [AlarmModel] {
-        return alarmRelay.value
+    var currentAlarms: [AlarmModel] { alarmsRelay.value }
+
+        // MARK: - Init
+
+    init() { loadAlarms() }
+
+    deinit { print("\(Self.self) deinit") }
+
+        // MARK: - Transform
+
+    func transform(input: Input) -> Output {
+        bindInputs(input)
+        return makeOutputs()
+    }
+}
+
+    // MARK: - Input Binding
+
+private extension AlarmViewModel {
+
+    func bindInputs(_ input: Input) {
+        bindAdd(input.addAlarm)
+        bindUpdate(input.updateAlarm)
+        bindDelete(input.deleteAlarm)
     }
 
-        // MARK: - Transform (Input -> Output)
-    func transform(input: Input) -> Output {
-            // 1. 초기 로드
-        input.viewDidLoad
-            .subscribe(onNext: { [weak self] in
-                self?.load()
-                self?.startFireTimer()
+        /// 알람 추가 — 목록에 삽입 후 시간순 정렬 및 알림 예약
+    func bindAdd(_ relay: PublishRelay<AlarmModel>) {
+        relay
+            .subscribe(onNext: { [weak self] alarm in
+                guard let self else { return }
+                var alarms = alarmsRelay.value
+                alarms.append(alarm)
+                alarms.sort { $0.time < $1.time }
+                alarmsRelay.accept(alarms)
+                persistAlarms(alarms)
+                scheduleNotification(for: alarm)
             })
             .disposed(by: disposeBag)
+    }
 
-            // 2. 추가
-        input.addAlarm
-            .subscribe(onNext: { [weak self] newAlarm in
-                var current = self?.alarmRelay.value ?? []
-                current.append(newAlarm)
-                self?.updateAndSave(current)
+        /// 알람 수정 — 기존 항목 교체 후 알림 재예약
+    func bindUpdate(_ relay: PublishRelay<AlarmModel>) {
+        relay
+            .subscribe(onNext: { [weak self] edited in
+                guard let self else { return }
+                var alarms = alarmsRelay.value
+                guard let idx = alarms.firstIndex(where: { $0.id == edited.id }) else { return }
+                cancelNotification(for: alarms[idx])
+                alarms[idx] = edited
+                alarms.sort { $0.time < $1.time }
+                alarmsRelay.accept(alarms)
+                persistAlarms(alarms)
+                if edited.isEnabled { scheduleNotification(for: edited) }
             })
             .disposed(by: disposeBag)
+    }
 
-            // 3. 수정 및 토글
-        input.updateAlarm
-            .subscribe(onNext: { [weak self] updated in
-                var current = self?.alarmRelay.value ?? []
-                if let index = current.firstIndex(where: { $0.id == updated.id }) {
-                    current[index] = updated
-                    self?.updateAndSave(current)
-                }
-            })
-            .disposed(by: disposeBag)
-
-            // 4. 삭제
-        input.deleteAlarm
+        /// 알람 삭제 — 인덱스 기준 제거 및 알림 취소
+    func bindDelete(_ relay: PublishRelay<Int>) {
+        relay
             .subscribe(onNext: { [weak self] index in
-                var current = self?.alarmRelay.value ?? []
-                guard index < current.count else { return }
-                current.remove(at: index)
-                self?.updateAndSave(current)
+                guard let self else { return }
+                var alarms = alarmsRelay.value
+                guard index < alarms.count else { return }
+                let removed = alarms.remove(at: index)
+                alarmsRelay.accept(alarms)
+                persistAlarms(alarms)
+                cancelNotification(for: removed)
             })
             .disposed(by: disposeBag)
+    }
+}
+
+    // MARK: - Output Creation
+
+private extension AlarmViewModel {
+
+    func makeOutputs() -> Output {
+            // 활성화된 알람 중 가장 이른 시간을 "다음 알람" 텍스트로 변환
+        let nextFireText = alarmsRelay
+            .map { [nextFireFormatter] alarms -> String? in
+                guard let next = alarms.filter({ $0.isEnabled }).min(by: { $0.time < $1.time }) else {
+                    return nil
+                }
+                return "다음 알람: \(nextFireFormatter.string(from: next.time))"
+            }
+            .asDriver(onErrorJustReturn: nil)
 
         return Output(
-            alarmList: alarmRelay,
-            nextFireText: nextFireRelay,
-            alarmFired: fireRelay
+            alarmList:    alarmsRelay.asDriver(),
+            nextFireText: nextFireText,
+            alarmFired:   alarmFiredRelay.asObservable()
         )
     }
+}
 
-        // MARK: - Data Persistence (저장 및 로드)
-    private func updateAndSave(_ newList: [AlarmModel]) {
-        let sorted = newList.sorted { ($0.hour * 60 + $0.minute) < ($1.hour * 60 + $1.minute) }
-        alarmRelay.accept(sorted)
-        save(sorted)
-        updateNextFireText()
-        scheduleNotifications(for: sorted)
-    }
+    // MARK: - Sound
 
-    private func load() {
-        guard let data = UserDefaults.standard.data(forKey: persistenceKey),
-              let list = try? JSONDecoder().decode([AlarmModel].self, from: data) else { return }
-        alarmRelay.accept(list)
-        updateNextFireText()
-    }
-
-    private func save(_ list: [AlarmModel]) {
-        if let data = try? JSONEncoder().encode(list) {
-            UserDefaults.standard.set(data, forKey: persistenceKey)
-        }
-    }
-
-        // MARK: - Alarm Logic (시간 계산 및 타이머)
-    private func updateNextFireText() {
-        let activeAlarms = alarmRelay.value.filter { $0.isEnabled }
-        if activeAlarms.isEmpty {
-            nextFireRelay.accept(nil)
-            return
-        }
-
-        let now = Date()
-        let calendar = Calendar.current
-        let fireDates = activeAlarms.compactMap { alarm -> Date? in
-            var components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
-            components.hour = alarm.hour
-            components.minute = alarm.minute
-            components.second = 0
-            guard let alarmDate = calendar.date(from: components) else { return nil }
-            return alarmDate <= now ? calendar.date(byAdding: .day, value: 1, to: alarmDate) : alarmDate
-        }
-
-        guard let nextDate = fireDates.min() else { return }
-        let diff = calendar.dateComponents([.hour, .minute], from: now, to: nextDate)
-        if let h = diff.hour, let m = diff.minute {
-            nextFireRelay.accept(h > 0 ? "\(h)시간 \(m)분 후 알람" : "\(m)분 후 알람")
-        }
-    }
-
-    private func startFireTimer() {
-        fireTimer?.invalidate()
-        fireTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
-            self?.checkFire()
-        }
-    }
-
-    private func checkFire() {
-        let now = Calendar.current.dateComponents([.hour, .minute], from: Date())
-        let firing = alarmRelay.value.filter { $0.isEnabled && $0.hour == now.hour && $0.minute == now.minute }
-        firing.forEach {
-            fireRelay.accept($0)
-            playSound($0.sound)
-        }
-    }
-
-        // MARK: - Sound & Notification
-    private func playSound(_ sound: AlarmSound) {
-        stopSound()
-        guard let url = Bundle.main.url(forResource: sound.rawValue, withExtension: "mp3") else { return }
-        player = try? AVAudioPlayer(contentsOf: url)
-        player?.play()
-    }
-
+extension AlarmViewModel {
     func stopSound() {
-        player?.stop()
-        player = nil
+        audioPlayer?.stop()
+        audioPlayer = nil
+    }
+}
+
+    // MARK: - Notification Scheduling
+
+private extension AlarmViewModel {
+
+        /// 알람 + 스누즈(최대 5회) 알림 예약
+    func scheduleNotification(for alarm: AlarmModel) {
+        let center = UNUserNotificationCenter.current()
+        cancelNotification(for: alarm)
+        guard alarm.isEnabled else { return }
+
+        scheduleMainNotification(alarm, center: center)
+
+        if alarm.isSnoozeEnabled {
+            for i in 1...5 {
+                scheduleSnoozeNotification(
+                    alarm,
+                    delayMinutes: alarm.snoozeInterval * i,
+                    snoozeIndex: i,
+                    center: center
+                )
+            }
+        }
     }
 
-    private func scheduleNotifications(for list: [AlarmModel]) {
-        let center = UNUserNotificationCenter.current()
-        center.removeAllPendingNotificationRequests()
-        list.filter { $0.isEnabled }.forEach { alarm in
-            let content = UNMutableNotificationContent()
-            content.title = alarm.label.isEmpty ? "알람" : alarm.label
-            content.body = "\(alarm.ampmString) \(alarm.timeString)"
-            content.sound = UNNotificationSound(named: UNNotificationSoundName(alarm.sound.rawValue + ".mp3"))
+    func scheduleMainNotification(_ alarm: AlarmModel, center: UNUserNotificationCenter) {
+        let content = makeContent(alarm: alarm, isSnooze: false)
+        let trigger = makeTrigger(from: alarm.time, repeatDays: alarm.repeatDays, offsetMinutes: 0)
+        center.add(UNNotificationRequest(
+            identifier: notificationID(alarm: alarm, snoozeIndex: 0),
+            content: content,
+            trigger: trigger
+        ))
+    }
 
-            var dc = DateComponents()
-            dc.hour = alarm.hour
-            dc.minute = alarm.minute
+    func scheduleSnoozeNotification(
+        _ alarm: AlarmModel,
+        delayMinutes: Int,
+        snoozeIndex: Int,
+        center: UNUserNotificationCenter
+    ) {
+        let content = makeContent(alarm: alarm, isSnooze: true)
+        let trigger = makeTrigger(from: alarm.time, repeatDays: alarm.repeatDays, offsetMinutes: delayMinutes)
+        center.add(UNNotificationRequest(
+            identifier: notificationID(alarm: alarm, snoozeIndex: snoozeIndex),
+            content: content,
+            trigger: trigger
+        ))
+    }
 
-            let trigger = UNCalendarNotificationTrigger(dateMatching: dc, repeats: true)
-            let request = UNNotificationRequest(identifier: alarm.id.uuidString, content: content, trigger: trigger)
-            center.add(request)
-        }
+    func makeContent(alarm: AlarmModel, isSnooze: Bool) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = alarm.label.isEmpty ? "알람" : alarm.label
+        content.body  = isSnooze ? "스누즈 알람 (\(alarm.snoozeInterval)분 후)" : "알람이 울립니다!"
+        content.sound = .default
+        content.interruptionLevel = .timeSensitive  // iOS 15+ 방해 금지 모드 무시
+        return content
+    }
+
+        /// UNCalendarNotificationTrigger 생성 (offsetMinutes 만큼 시간 오프셋 적용)
+    func makeTrigger(
+        from date: Date,
+        repeatDays: [Int],
+        offsetMinutes: Int
+    ) -> UNCalendarNotificationTrigger {
+        var c = Calendar.current.dateComponents([.hour, .minute], from: date)
+        let total  = (c.minute ?? 0) + offsetMinutes
+        c.hour     = ((c.hour ?? 0) + total / 60) % 24
+        c.minute   = total % 60
+        return UNCalendarNotificationTrigger(dateMatching: c, repeats: !repeatDays.isEmpty)
+    }
+
+        /// 해당 알람의 모든 알림(메인 + 스누즈 5개) 취소
+    func cancelNotification(for alarm: AlarmModel) {
+        let ids = (0...5).map { notificationID(alarm: alarm, snoozeIndex: $0) }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
+    }
+
+    func notificationID(alarm: AlarmModel, snoozeIndex: Int) -> String {
+        "alarm_\(alarm.id.uuidString)_snooze_\(snoozeIndex)"
+    }
+}
+
+    // MARK: - Persistence
+
+private extension AlarmViewModel {
+
+    func persistAlarms(_ alarms: [AlarmModel]) {
+        guard let data = try? JSONEncoder().encode(alarms) else { return }
+        UserDefaults.standard.set(data, forKey: persistenceKey)
+    }
+
+    func loadAlarms() {
+        guard
+            let data = UserDefaults.standard.data(forKey: persistenceKey),
+            let list = try? JSONDecoder().decode([AlarmModel].self, from: data)
+        else { return }
+        alarmsRelay.accept(list)
     }
 }
