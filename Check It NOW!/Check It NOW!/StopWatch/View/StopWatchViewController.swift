@@ -5,18 +5,22 @@
 //  Created by t2025-m0239 on 2026.03.23.
 //
 
-
 import UIKit
 import Then
 import SnapKit
 import RxSwift
 import RxCocoa
 
-final class StopWatchViewController: BaseViewController {
+final class StopWatchViewController: UIViewController {
 
-    private let viewModel = StopWatchViewModel()
+        // MARK: - Properties
+
+    private let disposeBag = DisposeBag()
+    private let viewModel  = StopWatchViewModel()
 
         // MARK: - UI Components
+
+        /// 전체 경과 시간 표시
     private let timeLabel = UILabel().then {
         $0.text          = "00:00.00"
         $0.textColor     = .white
@@ -24,46 +28,67 @@ final class StopWatchViewController: BaseViewController {
         $0.textAlignment = .center
     }
 
+        /// 랩 / 재설정 버튼 (왼쪽)
     private let lapButton = UIButton().then {
         $0.setTitle("재설정", for: .normal)
         $0.setTitleColor(.white, for: .normal)
         $0.setTitleColor(UIColor.white.withAlphaComponent(0.35), for: .disabled)
-        $0.titleLabel?.font = .systemFont(ofSize: 18, weight: .regular)
-        $0.backgroundColor = UIColor(white: 0.2, alpha: 1)
+        $0.titleLabel?.font   = .systemFont(ofSize: 18, weight: .regular)
+        $0.backgroundColor    = UIColor(white: 0.2, alpha: 1)
         $0.layer.cornerRadius = 40
-        $0.clipsToBounds = true
-        $0.isEnabled = false
-        $0.alpha = 0.4
+        $0.clipsToBounds      = true
+        $0.isEnabled          = false
+        $0.alpha              = 0.4
     }
 
+        /// 시작 / 중단 버튼 (오른쪽)
     private let startButton = UIButton().then {
         $0.setTitle("시작", for: .normal)
         $0.setTitleColor(.systemGreen, for: .normal)
-        $0.titleLabel?.font = .systemFont(ofSize: 18, weight: .regular)
-        $0.backgroundColor = UIColor(red: 0.0, green: 0.22, blue: 0.05, alpha: 1)
+        $0.titleLabel?.font   = .systemFont(ofSize: 18, weight: .regular)
+        $0.backgroundColor    = UIColor(red: 0.0, green: 0.22, blue: 0.05, alpha: 1)
         $0.layer.cornerRadius = 40
-        $0.clipsToBounds = true
+        $0.clipsToBounds      = true
     }
 
     private let separatorView = UIView().then {
         $0.backgroundColor = UIColor(white: 0.25, alpha: 1)
     }
 
+        /// 랩 기록 목록
     private let lapTableView = UITableView().then {
         $0.backgroundColor = .black
         $0.register(LapCell.self, forCellReuseIdentifier: LapCell.identifier)
-        $0.separatorColor = UIColor(white: 0.2, alpha: 1)
-        $0.separatorInset = .zero
-        $0.rowHeight = 44
+        $0.separatorColor  = UIColor(white: 0.2, alpha: 1)
+        $0.separatorInset  = .zero
+        $0.rowHeight       = 44
         $0.tableFooterView = UIView()
     }
 
-        // MARK: - BaseViewController
-    override func setupHierarchy() {
+        // MARK: - Lifecycle
+
+    init() { super.init(nibName: nil, bundle: nil) }
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .black
+        setupHierarchy()
+        setupLayout()
+        bind()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+            // 스톱워치 화면은 네비게이션바 숨김
+        navigationController?.setNavigationBarHidden(true, animated: false)
+    }
+
+    private func setupHierarchy() {
         [timeLabel, lapButton, startButton, separatorView, lapTableView].forEach { view.addSubview($0) }
     }
 
-    override func setupLayout() {
+    private func setupLayout() {
         timeLabel.snp.makeConstraints {
             $0.top.equalTo(view.safeAreaLayoutGuide).offset(90)
             $0.leading.trailing.equalToSuperview()
@@ -93,12 +118,9 @@ final class StopWatchViewController: BaseViewController {
         }
     }
 
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        navigationController?.setNavigationBarHidden(true, animated: false)
-    }
+        // MARK: - Bind
 
-    override func bind() {
+    private func bind() {
         let input = StopWatchViewModel.Input(
             startButtonTap: startButton.rx.tap,
             lapButtonTap:   lapButton.rx.tap
@@ -106,32 +128,28 @@ final class StopWatchViewController: BaseViewController {
 
         let output = viewModel.transform(input: input)
 
-            // 1. 전체 경과 시간
+            // 1. 전체 경과 시간 표시
         output.timeText
             .drive(timeLabel.rx.text)
             .disposed(by: disposeBag)
 
-            // 2. 버튼 상태 (시작/중단, 랩/재설정)
+            // 2. 버튼 상태 동기화 (시작↔중단, 랩↔재설정)
         Driver.combineLatest(output.isRunning, output.hasElapsed)
             .drive(onNext: { [weak self] isRunning, hasElapsed in
                 guard let self else { return }
 
-                    // 시작/중단
-                let startTitle = isRunning ? "중단" : "시작"
-                let startColor: UIColor = isRunning ? .systemRed : .systemGreen
-                let startBg: UIColor    = isRunning
-                    ? UIColor(red: 0.22, green: 0.0,  blue: 0.0,  alpha: 1)
-                    : UIColor(red: 0.0,  green: 0.22, blue: 0.05, alpha: 1)
-                self.startButton.setTitle(startTitle, for: .normal)
-                self.startButton.setTitleColor(startColor, for: .normal)
-                self.startButton.backgroundColor = startBg
+                    // 시작/중단 버튼
+                startButton.setTitle(isRunning ? "중단" : "시작", for: .normal)
+                startButton.setTitleColor(isRunning ? .systemRed : .systemGreen, for: .normal)
+                startButton.backgroundColor = isRunning
+                ? UIColor(red: 0.22, green: 0.0, blue: 0.0, alpha: 1)
+                : UIColor(red: 0.0, green: 0.22, blue: 0.05, alpha: 1)
 
-                    // 랩/재설정
-                let lapTitle = isRunning ? "랩" : "재설정"
-                self.lapButton.setTitle(lapTitle, for: .normal)
+                    // 랩/재설정 버튼
+                lapButton.setTitle(isRunning ? "랩" : "재설정", for: .normal)
                 let canLap = isRunning || hasElapsed
-                self.lapButton.isEnabled = canLap
-                self.lapButton.alpha     = canLap ? 1.0 : 0.4
+                lapButton.isEnabled = canLap
+                lapButton.alpha     = canLap ? 1.0 : 0.4
             })
             .disposed(by: disposeBag)
 
@@ -148,10 +166,12 @@ final class StopWatchViewController: BaseViewController {
                 var result: [(lap: String, time: String, highlight: LapCell.Highlight)] = []
                 let count = lapData.laps.count
 
+                    // 현재 진행 중인 랩 (맨 위에 추가)
                 if current.hasElapsed {
                     result.append(("랩 \(count + 1)", current.text, .none))
                 }
 
+                    // 기록된 랩 (최신순으로 역순 표시)
                 for (row, time) in lapData.laps.reversed().enumerated() {
                     let originalIdx = count - 1 - row
                     let h: LapCell.Highlight

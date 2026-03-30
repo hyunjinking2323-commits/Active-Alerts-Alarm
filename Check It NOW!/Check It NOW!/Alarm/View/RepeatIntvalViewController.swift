@@ -1,7 +1,9 @@
-    //
-    //  RepeatDayViewController.swift
-    //  Check It NOW!
-    //
+//
+//  RepeatIntvalViewController.swift
+//  Check It NOW!
+//
+//  Created by t2025-m0239 on 2026.03.29.
+//
 
 import UIKit
 import SnapKit
@@ -10,34 +12,35 @@ import RxSwift
 
     // MARK: - Delegate
 
-protocol RepeatDayViewControllerDelegate: AnyObject {
-    func didSelectRepeatDays(_ days: [Int])
+protocol RepeatIntervalViewControllerDelegate: AnyObject {
+    func didSelectInterval(_ minutes: Int)
 }
 
-    // MARK: - RepeatDayViewController
+    // MARK: - RepeatIntervalViewController
 
-final class RepeatDayViewController: UIViewController {
+final class RepeatIntervalViewController: UIViewController {
 
         // MARK: - Properties
 
     private let disposeBag = DisposeBag()
-    private var selectedDays: Set<Int>
-    weak var delegate: RepeatDayViewControllerDelegate?
+    private let currentInterval: Int
+    weak var delegate: RepeatIntervalViewControllerDelegate?
 
-    private let days = ["일", "월", "화", "수", "목", "금", "토"]
+        /// 1~30분 선택 목록
+    private let intervals: [Int] = Array(1...30)
 
         // MARK: - UI
 
     private let tableView = UITableView(frame: .zero, style: .insetGrouped).then {
         $0.backgroundColor = UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1)
         $0.separatorColor  = UIColor(white: 0.25, alpha: 1)
-        $0.register(UITableViewCell.self, forCellReuseIdentifier: "DayCell")
+        $0.register(UITableViewCell.self, forCellReuseIdentifier: "IntervalCell")
     }
 
         // MARK: - Init
 
-    init(selectedDays: [Int] = []) {
-        self.selectedDays = Set(selectedDays)
+    init(currentInterval: Int = 5) {
+        self.currentInterval = currentInterval
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -48,57 +51,50 @@ final class RepeatDayViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1)
-        title = "반복"
+        title = "반복 시간"
         view.addSubview(tableView)
         tableView.snp.makeConstraints { $0.edges.equalToSuperview() }
         tableView.delegate   = self
         tableView.dataSource = self
     }
-
-        /// 화면이 사라질 때 delegate에 선택 결과 전달 (back 버튼 포함)
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        delegate?.didSelectRepeatDays(Array(selectedDays).sorted())
-    }
 }
 
     // MARK: - UITableViewDataSource
 
-extension RepeatDayViewController: UITableViewDataSource {
+extension RepeatIntervalViewController: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        days.count
+        intervals.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell     = tableView.dequeueReusableCell(withIdentifier: "DayCell", for: indexPath)
-        let dayIndex = indexPath.row
+        let cell    = tableView.dequeueReusableCell(withIdentifier: "IntervalCell", for: indexPath)
+        let minutes = intervals[indexPath.row]
 
         var config = cell.defaultContentConfiguration()
-        config.text = days[dayIndex]
+        config.text = "\(minutes)분"
         config.textProperties.color = .white
         cell.contentConfiguration = config
 
         cell.backgroundColor = UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1)
         cell.tintColor       = .systemOrange
-        cell.accessoryType   = selectedDays.contains(dayIndex) ? .checkmark : .none
+        cell.accessoryType   = (minutes == currentInterval) ? .checkmark : .none
 
         return cell
+    }
+
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        "알람이 울린 후 반복 간격을 선택하세요"
     }
 }
 
     // MARK: - UITableViewDelegate
 
-extension RepeatDayViewController: UITableViewDelegate {
+extension RepeatIntervalViewController: UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        let dayIndex = indexPath.row
-        if selectedDays.contains(dayIndex) {
-            selectedDays.remove(dayIndex)
-        } else {
-            selectedDays.insert(dayIndex)
-        }
-        tableView.reloadRows(at: [indexPath], with: .none)
+        delegate?.didSelectInterval(intervals[indexPath.row])
+        navigationController?.popViewController(animated: true)
     }
 }
